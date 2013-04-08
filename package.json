@@ -1,0 +1,12 @@
+{
+	"name": 		"Reporter",
+	"description": 	"",
+	"version":		"1.0.0",
+	"dependencies": {
+		"ws": 			"latest",
+		"mongodb":		"latest",
+		"mysql":		"latest",
+		"underscore":	"latest"
+	}
+}
+

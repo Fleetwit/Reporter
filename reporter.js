@@ -71,7 +71,8 @@ reporterServer.prototype.saveData = function(data) {
 			{
 				dd:		date.getDate(),
 				mm:		date.getMonth()+1,
-				yyyy:	date.getFullYear()
+				yyyy:	date.getFullYear(),
+				label:	data.label
 			},
 			{
 				$push:	{

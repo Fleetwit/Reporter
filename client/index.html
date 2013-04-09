@@ -21,6 +21,7 @@
 		
 		var ws;
 		var level = 1;
+		var itv;
 		
 		$(function() {
 			$("[data-action]").click(function() {
@@ -33,14 +34,14 @@
 								reconnect:	true,
 								onConnect:	function(reconnected) {
 									console.log("connected",reconnected);
-									/*setInterval(function() {
+									itv = window.setInterval(function() {
 										
 										ws.send({
 											plot: {
 												realtime:	true
 											}
 										},false, true);
-									}, 1000);*/
+									}, 1000);
 									
 								},
 								onReceive:	function(message) {
@@ -61,6 +62,7 @@
 					break;
 					case "get":
 						console.log("updating...");
+						window.clearInterval(itv);
 						ws.send({
 							plot: {
 								realtime:	false,

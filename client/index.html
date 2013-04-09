@@ -154,9 +154,9 @@
 				} else {
 					// realtime data
 					for (i=0;i<l;i++) {
-						if (data[i].dd*1 != 8) {
+						/*if (data[i].dd*1 != 8) {
 							continue;
-						}
+						}*/
 						for (j in data[i].data) {
 							var label 		= data[i].label+"."+j;
 							var minidata	= (j=="count"||j=="ocount");

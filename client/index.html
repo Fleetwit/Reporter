@@ -85,6 +85,7 @@
 				var c = 0;
 				var l = data.length;
 				var l2;
+				var min = 1000000000000;
 				console.log(">length",l);
 				var datasets = {};
 				if (data.length == 0) {
@@ -95,6 +96,9 @@
 					for (a=0;a<l;a++) {
 						l2 = data[a].datapoints.length;
 						for (i=0;i<l2;i++) {
+							if (data[a].datapoints[i].dd*1 != 8) {
+								continue;
+							}
 							// don't use the plots
 							if (data[a].datapoints[i].plot) {
 								continue;
@@ -103,12 +107,17 @@
 								
 								if (_.isNumber(data[a].datapoints[i].data[j])) {
 									var label = data[a].datapoints[i].label+"."+j;
+									var minidata	= (j=="count"||j=="ocount");
 									if (!datasets[label]) {
 										datasets[label] = {
 											label:	label,
 											data:	[],
-											color:	c++
+											color:	c++,
+											yaxis:	minidata?2:1
 										};
+									}
+									if (!minidata && data[i].data[j] < min) {
+										min = data[i].data[j];
 									}
 									datasets[label].data.push([
 										new Date(data[a].datapoints[i].yyyy,data[a].datapoints[i].mm-1,data[a].datapoints[i].dd,data[a].datapoints[i].h,data[a].datapoints[i].m,data[a].datapoints[i].s),
@@ -136,14 +145,22 @@
 				} else {
 					// realtime data
 					for (i=0;i<l;i++) {
+						if (data[i].dd*1 != 8) {
+							continue;
+						}
 						for (j in data[i].data) {
-							var label = data[i].label+"."+j;
+							var label 		= data[i].label+"."+j;
+							var minidata	= (j=="count"||j=="ocount");
 							if (!datasets[label]) {
 								datasets[label] = {
 									label:	label,
 									data:	[],
-									color:	c++
+									color:	c++,
+									yaxis:	minidata?2:1
 								};
+							}
+							if (!minidata && data[i].data[j] < min) {
+								min = data[i].data[j];
 							}
 							
 							datasets[label].data.push([
@@ -156,7 +173,11 @@
 						}
 					}
 				}
+				for (k in datasets) {
+					datasets[k].data = _.last(datasets[k].data,$("#points").val())
+				}
 				console.log("datasets",datasets);
+				console.log("min",min);
 				
 				 // insert checkboxes 
 				var choiceContainer = $("#choices");
@@ -179,9 +200,12 @@
 				
 					if (data.length > 0)
 					$.plot($("#placeholder"), data, {
-						yaxis: {
-							min: 		0
-						},
+						yaxis: [{
+							min: 		min
+						},{
+							min: 		0,
+							position: "right"
+                        }],
 						xaxis: {
 							tickDecimals: 0,
 							mode: 		"time",

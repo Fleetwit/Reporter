@@ -51,6 +51,9 @@
 								},
 								onClose:	function() {
 									console.log("onClose");
+								},
+								onFail:	function() {
+									alert("Service offline");
 								}
 							});
 						}
@@ -76,6 +79,9 @@
 				}
 				
 			});
+			
+			// connect
+			$('[data-action="connect"]').click();
 			
 			function updateChart(data) {
 				console.log("data",data);

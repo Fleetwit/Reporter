@@ -1,0 +1,205 @@
+<!DOCTYPE HTML>
+<html lang="en-US">
+<head>
+	<title>Reporter Client</title>
+	<meta charset="UTF-8">
+	<script type="text/javascript" src="http://code.jquery.com/jquery-1.9.1.min.js"></script>
+	<script type="text/javascript" src="json2.js"></script>
+	<script type="text/javascript" src="uuid.js"></script>
+	<script type="text/javascript" src="underscore.js"></script>
+	<script type="text/javascript" src="awsi.js"></script>
+		<script language="javascript" type="text/javascript" src="flot/jquery.flot.js"></script>
+</head>
+<body>
+	<button data-action="connect">Connect</button>
+	<button data-action="update">update</button>
+	<input type="text" id="points" value="200" style="width:50px" /><button data-action="get">Get</button>
+	<hr />
+	<div id="placeholder" style="width:100%;height:300px;"></div>
+    <p id="choices">Show:</p>
+	<script type="text/javascript">
+		
+		var ws;
+		var level = 1;
+		
+		$(function() {
+			$("[data-action]").click(function() {
+				switch ($(this).data("action")) {
+					case "connect":
+						if (!ws) {
+							ws = new awsi({
+								addr:		["ws://209.59.172.80:8016"],
+								keepalive:	true,
+								reconnect:	true,
+								onConnect:	function(reconnected) {
+									console.log("connected",reconnected);
+									/*setInterval(function() {
+										
+										ws.send({
+											plot: {
+												realtime:	true
+											}
+										},false, true);
+									}, 1000);*/
+									
+								},
+								onReceive:	function(message) {
+									//console.log("onReceive",message);
+									if (message.plot) {
+										updateChart(message.plot);
+									}
+								},
+								onClose:	function() {
+									console.log("onClose");
+								}
+							});
+						}
+						ws.connect();
+					break;
+					case "get":
+						console.log("updating...");
+						ws.send({
+							plot: {
+								realtime:	false,
+								points:		$("#points").val()
+							}
+						},false, true);
+					break;
+					case "update":
+						console.log("updating...");
+						ws.send({
+							plot: {
+								realtime:	true
+							}
+						},false, true);
+					break;
+				}
+				
+			});
+			
+			function updateChart(data) {
+				console.log("data",data);
+				// prepare the data
+				var i;
+				var j;
+				var c = 0;
+				var l = data.length;
+				var l2;
+				console.log(">length",l);
+				var datasets = {};
+				if (data.length == 0) {
+					return false;
+				}
+				if (data[0]._id) {
+					// saved data
+					for (a=0;a<l;a++) {
+						l2 = data[a].datapoints.length;
+						for (i=0;i<l2;i++) {
+							// don't use the plots
+							if (data[a].datapoints[i].plot) {
+								continue;
+							}
+							for (j in data[a].datapoints[i].data) {
+								
+								if (_.isNumber(data[a].datapoints[i].data[j])) {
+									var label = data[a].datapoints[i].label+"."+j;
+									if (!datasets[label]) {
+										datasets[label] = {
+											label:	label,
+											data:	[],
+											color:	c++
+										};
+									}
+									datasets[label].data.push([
+										new Date(data[a].datapoints[i].yyyy,data[a].datapoints[i].mm-1,data[a].datapoints[i].dd,data[a].datapoints[i].h,data[a].datapoints[i].m,data[a].datapoints[i].s),
+										data[a].datapoints[i].data[j]
+									]);
+								} else {
+									for (k in data[a].datapoints[i].data[j]) {
+										var label = data[a].datapoints[i].label+"."+j+"."+k;
+										if (!datasets[label]) {
+											datasets[label] = {
+												label:	label,
+												data:	[],
+												color:	c++
+											};
+										}
+										datasets[label].data.push([
+											new Date(data[a].datapoints[i].yyyy,data[a].datapoints[i].mm-1,data[a].datapoints[i].dd,data[a].datapoints[i].h,data[a].datapoints[i].m,data[a].datapoints[i].s),
+											data[a].datapoints[i].data[j][k]
+										]);
+									}
+								}
+							}
+						}
+					}
+				} else {
+					// realtime data
+					for (i=0;i<l;i++) {
+						for (j in data[i].data) {
+							var label = data[i].label+"."+j;
+							if (!datasets[label]) {
+								datasets[label] = {
+									label:	label,
+									data:	[],
+									color:	c++
+								};
+							}
+							
+							datasets[label].data.push([
+								//data[i].h+":"+data[i].m+":"+data[i].s,
+								//i,
+								new Date(data[i].yyyy,data[i].mm-1,data[i].dd,data[i].h,data[i].m,data[i].s),
+								data[i].data[j]
+							]);
+							//console.log("data[i].yyyy,data[i].mm,data[i].dd,data[i].h,data[i].m,data[i].s",data[i].yyyy,data[i].mm-1,data[i].dd,data[i].h,data[i].m,data[i].s);
+						}
+					}
+				}
+				console.log("datasets",datasets);
+				
+				 // insert checkboxes 
+				var choiceContainer = $("#choices");
+				choiceContainer.empty();
+				$.each(datasets, function(key, val) {
+					choiceContainer.append('<br/><input type="checkbox" name="' + key +
+					'" checked="checked" id="id' + key + '">' +
+					'<label for="id' + key + '">'
+					+ val.label + '</label>');
+				});
+				
+				var displayPlot = function() {
+					var data = [];
+				
+					choiceContainer.find("input:checked").each(function () {
+						var key = $(this).attr("name");
+						if (key && datasets[key])
+						data.push(datasets[key]);
+					});
+				
+					if (data.length > 0)
+					$.plot($("#placeholder"), data, {
+						yaxis: {
+							min: 		0
+						},
+						xaxis: {
+							tickDecimals: 0,
+							mode: 		"time",
+							timeformat: "%d - %H:%M:%S"
+						}
+					});
+				};
+				
+				choiceContainer.find("input").unbind("click").bind("click",displayPlot);
+				
+				displayPlot();
+			}
+			function plotAccordingToChoices() {
+				
+			}
+		});
+	</script>
+	
+	
+</body>
+</html>

@@ -19,7 +19,8 @@ function reporterServer() {
 		update:			5000,	// Request data from clients
 		save:			10000	// Save the stack
 	};
-	this.stack		= [];
+	this.stack		= [];		// stack of recent datapoints
+	this.stackSize	= 50;
 	this.init();
 };
 
@@ -43,7 +44,15 @@ reporterServer.prototype.serverInit = function() {
 		onReceive:	function(client, data) {
 			console.log("<"+process.pid+"> Receiving...");
 			console.log(data);
-			scope.saveData(data);
+			if (data.plot) {
+				scope.plot(data.plot, function(response) {
+					console.log(">>>>>>response",response);
+					scope.server.send(client.uid, {plot:response});
+				});
+				
+			} else {
+				scope.saveData(data);
+			}
 		},
 		onQuit:	function(client) {
 			
@@ -59,6 +68,21 @@ reporterServer.prototype.timerInit = function() {
 			update: true
 		});
 	},this.interval.update);
+};
+reporterServer.prototype.plot = function(options, callback) {
+	var scope = this;
+	if (options.realtime) {
+		// realtime: we return the current stack (max 50 points)
+		callback(scope.stack);
+	} else {
+		// Not realtime, we get the data from Mongo
+		this.mongo.open("reporter", function(collection) {
+			collection.find({},{}).toArray(function(err, docs) {
+				callback(docs);
+			});
+		});
+	}
+	
 };
 reporterServer.prototype.saveData = function(data) {
 	var scope = this;
@@ -87,10 +111,13 @@ reporterServer.prototype.saveData = function(data) {
 			}
 		);
 		
+		
+		// save to the stack
+		scope.stack.push(data);
+		
+		// trim the stack
+		scope.stack = scope.stack.slice(scope.stack.length < scope.stackSize ? 0 : scope.stack.length-scope.stackSize);
 	});
-	
-	// empty the stack
-	this.stack = [];
 };
 
 
